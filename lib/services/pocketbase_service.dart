@@ -434,6 +434,145 @@ class PocketBaseService {
     return [];
   }
 
+  // ==================== INDICAÇÕES ====================
+
+  Future<List<UserModel>> getIndicados(String userId) async {
+    final response = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/profiles?indicado_por=eq.$userId&select=*'),
+      headers: _headers,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return data.map((e) => UserModel.fromJson(e)).toList();
+      }
+    }
+    return [];
+  }
+
+  Future<int> getIndicacoesConvertidas(String userId) async {
+    // Conta quantos indicados pelo userId fizeram check-in
+    final response = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/checkins?user_id=eq.$userId&select=id'),
+      headers: _serviceHeaders,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return data.length;
+      }
+    }
+    return 0;
+  }
+
+  Future<List<Map<String, dynamic>>> getRankingIndicadores() async {
+    // Busca todos os perfis e conta indicações convertidas
+    final response = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/profiles?select=*&order=pontuacao_total.desc&limit=100'),
+      headers: _headers,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        List<Map<String, dynamic>> ranking = [];
+        for (var user in data) {
+          final userId = user['id'];
+          // Verifica se o usuário foi indicado por alguém
+          if (user['indicado_por'] != null && user['indicado_por'].toString().isNotEmpty) {
+            // Conta check-ins do indicado para pontuar o indicador
+            final checkinsResp = await _client.get(
+              Uri.parse('${AppConfig.supabaseUrl}/rest/v1/checkins?user_id=eq.$userId&select=id'),
+              headers: _serviceHeaders,
+            );
+            int indicacoesConvertidas = 0;
+            if (checkinsResp.statusCode == 200) {
+              final checkins = jsonDecode(checkinsResp.body);
+              if (checkins is List && checkins.isNotEmpty) {
+                indicacoesConvertidas = 1; // Pelo menos 1 check-in = convertida
+              }
+            }
+            ranking.add({
+              ...Map<String, dynamic>.from(user),
+              'indicacoes_convertidas': indicacoesConvertidas,
+            });
+          }
+        }
+        ranking.sort((a, b) => (b['indicacoes_convertidas'] as int).compareTo(a['indicacoes_convertidas'] as int));
+        return ranking;
+      }
+    }
+    return [];
+  }
+
+  // ==================== MATCH POR INTERESSES ====================
+
+  Future<List<Map<String, dynamic>>> getMatches(String userId) async {
+    // Busca interesses do usuário logado
+    final userInteressesResp = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/interesses?user_id=eq.$userId&select=areas'),
+      headers: _serviceHeaders,
+    );
+
+    List<String> userAreas = [];
+    if (userInteressesResp.statusCode == 200) {
+      final data = jsonDecode(userInteressesResp.body);
+      if (data is List && data.isNotEmpty && data[0]['areas'] != null) {
+        userAreas = (data[0]['areas'] as List).map((e) => e.toString()).toList();
+      }
+    }
+
+    if (userAreas.isEmpty) return [];
+
+    // Busca todos os perfis com interesses
+    final allInteressesResp = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/interesses?select=user_id,areas&user_id=neq.$userId'),
+      headers: _serviceHeaders,
+    );
+
+    List<Map<String, dynamic>> matches = [];
+    if (allInteressesResp.statusCode == 200) {
+      final data = jsonDecode(allInteressesResp.body);
+      if (data is List) {
+        for (var item in data) {
+          final otherAreas = (item['areas'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          final commonAreas = userAreas.where((a) => otherAreas.contains(a)).toList();
+          if (commonAreas.isNotEmpty) {
+            // Busca dados do perfil
+            final profileResp = await _client.get(
+              Uri.parse('${AppConfig.supabaseUrl}/rest/v1/profiles?id=eq.${item['user_id']}&select=id,nome,cidade'),
+              headers: _serviceHeaders,
+            );
+            if (profileResp.statusCode == 200) {
+              final profileData = jsonDecode(profileResp.body);
+              if (profileData is List && profileData.isNotEmpty) {
+                matches.add({
+                  ...Map<String, dynamic>.from(profileData[0]),
+                  'areas_comuns': commonAreas,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+    return matches;
+  }
+
+  Future<void> criarMatch(String userId, String matchId) async {
+    await _client.post(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/conexoes'),
+      headers: _headers,
+      body: jsonEncode({
+        'user_id': userId,
+        'conexao_id': matchId,
+        'tipo': 'match_trabalho',
+      }),
+    );
+  }
+
   // ==================== HELPERS ====================
 
   Future<String> _gerarCodigoUnico() async {
