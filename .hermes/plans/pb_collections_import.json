@@ -1,0 +1,293 @@
+{
+  "collections": [
+    {
+      "name": "eventos",
+      "type": "base",
+      "schema": [
+        {
+          "name": "titulo",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "data",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "horario",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "local",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "geolocalizacao",
+          "type": "json",
+          "required": false
+        },
+        {
+          "name": "qr_code_token",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "options": {
+            "values": ["agendado", "andamento", "finalizado"],
+            "default": "agendado"
+          }
+        },
+        {
+          "name": "criado_por",
+          "type": "relation",
+          "required": true,
+          "options": {
+            "collectionId": "_pb_users_auth_",
+            "cascadeDelete": false
+          }
+        },
+        {
+          "name": "confirmados",
+          "type": "number",
+          "required": false,
+          "options": {
+            "default": 0
+          }
+        },
+        {
+          "name": "meta_participantes",
+          "type": "number",
+          "required": false,
+          "options": {
+            "default": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "checkins",
+      "type": "base",
+      "schema": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "options": {
+            "collectionId": "_pb_users_auth_",
+            "cascadeDelete": true
+          }
+        },
+        {
+          "name": "evento_id",
+          "type": "relation",
+          "required": true,
+          "options": {
+            "collectionId": "",
+            "cascadeDelete": true
+          }
+        },
+        {
+          "name": "timestamp",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "tipo_checkin",
+          "type": "text",
+          "required": false,
+          "options": {
+            "default": "entrada"
+          }
+        },
+        {
+          "name": "geolocalizacao",
+          "type": "json",
+          "required": false
+        },
+        {
+          "name": "offline",
+          "type": "bool",
+          "required": false,
+          "options": {
+            "default": false
+          }
+        },
+        {
+          "name": "token",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "mural_posts",
+      "type": "base",
+      "schema": [
+        {
+          "name": "autor_id",
+          "type": "relation",
+          "required": true,
+          "options": {
+            "collectionId": "_pb_users_auth_",
+            "cascadeDelete": true
+          }
+        },
+        {
+          "name": "titulo",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "texto",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "midia_url",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "curtidas",
+          "type": "json",
+          "required": false,
+          "options": {
+            "default": []
+          }
+        },
+        {
+          "name": "data",
+          "type": "date",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "conexoes",
+      "type": "base",
+      "schema": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "options": {
+            "collectionId": "_pb_users_auth_",
+            "cascadeDelete": true
+          }
+        },
+        {
+          "name": "conexao_id",
+          "type": "relation",
+          "required": true,
+          "options": {
+            "collectionId": "_pb_users_auth_",
+            "cascadeDelete": true
+          }
+        },
+        {
+          "name": "tipo",
+          "type": "select",
+          "required": true,
+          "options": {
+            "values": ["indicacao", "match_trabalho"]
+          }
+        },
+        {
+          "name": "evento_id",
+          "type": "relation",
+          "required": false,
+          "options": {
+            "collectionId": "",
+            "cascadeDelete": true
+          }
+        },
+        {
+          "name": "data",
+          "type": "date",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "interesses",
+      "type": "base",
+      "schema": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "options": {
+            "collectionId": "_pb_users_auth_",
+            "cascadeDelete": true
+          }
+        },
+        {
+          "name": "areas",
+          "type": "json",
+          "required": false,
+          "options": {
+            "default": []
+          }
+        },
+        {
+          "name": "candidatos_apoio",
+          "type": "json",
+          "required": false,
+          "options": {
+            "default": []
+          }
+        },
+        {
+          "name": "ultima_troca_candidato",
+          "type": "date",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "materiais",
+      "type": "base",
+      "schema": [
+        {
+          "name": "titulo",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "categoria",
+          "type": "select",
+          "required": true,
+          "options": {
+            "values": ["video", "arte", "pdf", "treinamento", "discurso"]
+          }
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "arquivo_url",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "thumbnail",
+          "type": "text",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

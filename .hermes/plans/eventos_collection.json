@@ -1,0 +1,17 @@
+{
+  "name": "eventos",
+  "type": "base",
+  "fields": [
+    {"name": "titulo", "type": "text", "required": true},
+    {"name": "descricao", "type": "text", "required": false},
+    {"name": "data", "type": "date", "required": true},
+    {"name": "horario", "type": "text", "required": false},
+    {"name": "local", "type": "text", "required": true},
+    {"name": "geolocalizacao", "type": "json", "required": false},
+    {"name": "qr_code_token", "type": "text", "required": false},
+    {"name": "status", "type": "select", "required": true, "options": {"values": ["agendado", "andamento", "finalizado"], "default": "agendado"}},
+    {"name": "criado_por", "type": "relation", "required": true, "options": {"collectionId": "users", "cascadeDelete": false}},
+    {"name": "confirmados", "type": "number", "required": false, "options": {"default": 0}},
+    {"name": "meta_participantes", "type": "number", "required": false, "options": {"default": 0}}
+  ]
+}
