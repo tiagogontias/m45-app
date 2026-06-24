@@ -7,7 +7,9 @@ class UserModel {
   final String? telefone;
   final String? cidade;
   final String? equipeId;
+  final String? coordenadorId;
   final String cargo;
+  final String? estado;
   final bool ativo;
   final int pontuacaoTotal;
   final List<String>? areasInteresse;
@@ -22,7 +24,9 @@ class UserModel {
     this.telefone,
     this.cidade,
     this.equipeId,
+    this.coordenadorId,
     this.cargo = 'militante',
+    this.estado,
     this.ativo = true,
     this.pontuacaoTotal = 0,
     this.areasInteresse,
@@ -39,7 +43,9 @@ class UserModel {
       telefone: json['telefone']?.toString(),
       cidade: json['cidade']?.toString(),
       equipeId: json['equipe_id']?.toString(),
+      coordenadorId: json['coordenador_id']?.toString(),
       cargo: json['cargo']?.toString() ?? 'militante',
+      estado: json['estado']?.toString(),
       ativo: json['ativo'] as bool? ?? true,
       pontuacaoTotal: (json['pontuacao_total'] as num?)?.toInt() ?? 0,
       areasInteresse: json['areas_interesse'] != null
@@ -62,11 +68,19 @@ class UserModel {
       'telefone': telefone,
       'cidade': cidade,
       'equipe_id': equipeId,
+      'coordenador_id': coordenadorId,
       'cargo': cargo,
+      'estado': estado,
       'ativo': ativo,
       'pontuacao_total': pontuacaoTotal,
       'areas_interesse': areasInteresse,
       'candidatos_apoio': candidatosApoio,
     };
   }
+
+  bool get isAdmin => cargo == 'super_admin';
+  bool get isCoordenadorGeral => cargo == 'coordenador_geral';
+  bool get isCoordenadorMunicipal => cargo == 'coordenador_municipal';
+  bool get isCoordenador => isCoordenadorGeral || isCoordenadorMunicipal;
+  bool get isMilitante => cargo == 'militante';
 }

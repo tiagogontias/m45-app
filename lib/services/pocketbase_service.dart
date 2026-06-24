@@ -7,6 +7,9 @@ import '../core/config.dart';
 import '../models/evento_model.dart';
 import '../models/mural_post_model.dart';
 import '../models/user_model.dart';
+import '../models/team_model.dart';
+import '../models/convite_model.dart';
+import '../models/atividade_model.dart';
 
 class PocketBaseService {
   final http.Client _client = http.Client();
@@ -571,6 +574,80 @@ class PocketBaseService {
         'tipo': 'match_trabalho',
       }),
     );
+  }
+
+  // ==================== EQUIPES ====================
+
+  Future<List<Team>> getTeams() async {
+    final response = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/teams?select=*&ativa=eq.true&order=nome'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return data.map((e) => Team.fromJson(e)).toList();
+      }
+    }
+    return [];
+  }
+
+  Future<Team> createTeam(Map<String, dynamic> data) async {
+    final response = await _client.post(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/teams'),
+      headers: {..._serviceHeaders, 'Prefer': 'return=representation'},
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 201) {
+      final result = jsonDecode(response.body);
+      return Team.fromJson(result[0]);
+    }
+    throw Exception('Erro ao criar equipe.');
+  }
+
+  // ==================== CONVITES ====================
+
+  Future<void> enviarConvite({required String email, required String teamId}) async {
+    final token = DateTime.now().millisecondsSinceEpoch.toString();
+    await _client.post(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/convites'),
+      headers: _headers,
+      body: jsonEncode({
+        'email': email,
+        'team_id': teamId,
+        'token': token,
+        'status': 'pendente',
+      }),
+    );
+  }
+
+  // ==================== ATIVIDADES ====================
+
+  Future<List<Atividade>> getAtividades() async {
+    final response = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/atividades?select=*&order=data.desc'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return data.map((e) => Atividade.fromJson(e)).toList();
+      }
+    }
+    return [];
+  }
+
+  Future<Atividade> createAtividade(Map<String, dynamic> data) async {
+    final response = await _client.post(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/atividades'),
+      headers: {..._serviceHeaders, 'Prefer': 'return=representation'},
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 201) {
+      final result = jsonDecode(response.body);
+      return Atividade.fromJson(result[0]);
+    }
+    throw Exception('Erro ao criar atividade.');
   }
 
   // ==================== HELPERS ====================

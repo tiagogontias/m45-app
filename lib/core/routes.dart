@@ -6,11 +6,13 @@ import '../screens/evento_detalhe_screen.dart';
 import '../screens/eventos_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/login_screen.dart';
-import '../screens/materiais_screen.dart';
 import '../screens/mural_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/ranking_screen.dart';
 import '../screens/register_screen.dart';
+import '../screens/teams_screen.dart';
+import '../screens/atividades_screen.dart';
+import '../screens/materiais_screen.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -25,6 +27,8 @@ class AppRoutes {
   static const String ranking = '/ranking';
   static const String mural = '/mural';
   static const String materiais = '/materiais';
+  static const String teams = '/teams';
+  static const String atividades = '/atividades';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -55,6 +59,10 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const MuralScreen());
       case materiais:
         return MaterialPageRoute(builder: (_) => const MateriaisScreen());
+      case teams:
+        return MaterialPageRoute(builder: (_) => const TeamsScreen());
+      case atividades:
+        return MaterialPageRoute(builder: (_) => const AtividadesScreen());
       default:
         return MaterialPageRoute(builder: (_) => const LoginScreen());
     }
