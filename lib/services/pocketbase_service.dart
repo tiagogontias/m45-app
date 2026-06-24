@@ -10,6 +10,8 @@ import '../models/user_model.dart';
 import '../models/team_model.dart';
 import '../models/convite_model.dart';
 import '../models/atividade_model.dart';
+import '../models/solicitacao_model.dart';
+import '../services/local_storage_service.dart';
 
 class PocketBaseService {
   final http.Client _client = http.Client();
@@ -650,7 +652,243 @@ class PocketBaseService {
     throw Exception('Erro ao criar atividade.');
   }
 
+  // ==================== SOLICITAÇÕES ====================
+
+  Future<Solicitacao> createSolicitacao(Map<String, dynamic> data) async {
+    final response = await _client.post(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/solicitacoes'),
+      headers: {..._serviceHeaders, 'Prefer': 'return=representation'},
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 201) {
+      final result = jsonDecode(response.body);
+      return Solicitacao.fromJson(result[0]);
+    }
+    throw Exception('Erro ao criar solicitação.');
+  }
+
+  Future<List<Solicitacao>> getMinhasSolicitacoes() async {
+    final user = getCurrentUserFromCache();
+    if (user == null) return [];
+    final response = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/solicitacoes?solicitante_id=eq.${user.id}&order=data.desc'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return data.map((e) => Solicitacao.fromJson(e)).toList();
+      }
+    }
+    return [];
+  }
+
+  Future<List<Solicitacao>> getSolicitacoesGestao() async {
+    final response = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/solicitacoes?order=data.desc&limit=100'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return data.map((e) => Solicitacao.fromJson(e)).toList();
+      }
+    }
+    return [];
+  }
+
+  Future<void> updateSolicitacaoStatus(String id, String status, {String? resposta}) async {
+    await _client.patch(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/solicitacoes?id=eq.$id'),
+      headers: {..._serviceHeaders, 'Prefer': 'return=minimal'},
+      body: jsonEncode({'status': status, 'resposta': resposta}),
+    );
+  }
+
+  // ==================== DASHBOARD ====================
+
+  Future<Map<String, int>> getDashboardIndicadores() async {
+    final indicadores = <String, int>{};
+
+    // Total de equipes
+    final teamsResp = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/teams?select=id&ativa=eq.true'),
+      headers: _serviceHeaders,
+    );
+    indicadores['teams'] = _countResults(teamsResp);
+
+    // Total de perfis
+    final profilesResp = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/profiles?select=id'),
+      headers: _serviceHeaders,
+    );
+    indicadores['militantes'] = _countResults(profilesResp);
+
+    // Eventos ativos (próximos 7 dias)
+    final now = DateTime.now();
+    final future = now.add(const Duration(days: 7));
+    final eventosResp = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/eventos?select=id&data=gte.${now.toIso8601String().split('T')[0]}&data=lte.${future.toIso8601String().split('T')[0]}'),
+      headers: _serviceHeaders,
+    );
+    indicadores['eventos_ativos'] = _countResults(eventosResp);
+
+    // Atividades em andamento
+    final atividadesResp = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/atividades?select=id&status=eq.em_andamento'),
+      headers: _serviceHeaders,
+    );
+    indicadores['atividades_andamento'] = _countResults(atividadesResp);
+
+    // Solicitações pendentes
+    final solicitacoesResp = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/solicitacoes?select=id&status=eq.aberto'),
+      headers: _serviceHeaders,
+    );
+    indicadores['solicitacoes_pendentes'] = _countResults(solicitacoesResp);
+
+    return indicadores;
+  }
+
+  int _countResults(http.Response response) {
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is List) return data.length;
+    }
+    return 0;
+  }
+
+  // ==================== AGENDA UNIFICADA ====================
+
+  Future<List<Map<String, dynamic>>> getAgenda() async {
+    final agenda = <Map<String, dynamic>>[];
+
+    // Buscar eventos
+    final eventosResp = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/eventos?select=*&order=data.asc'),
+      headers: _headers,
+    );
+    if (eventosResp.statusCode == 200) {
+      final data = jsonDecode(eventosResp.body);
+      if (data is List) {
+        for (var item in data) {
+          agenda.add({...Map<String, dynamic>.from(item), 'tipo_item': 'evento', 'horario': item['horario'] ?? ''});
+        }
+      }
+    }
+
+    // Buscar atividades
+    final atividadesResp = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/atividades?select=*&order=data.asc'),
+      headers: _headers,
+    );
+    if (atividadesResp.statusCode == 200) {
+      final data = jsonDecode(atividadesResp.body);
+      if (data is List) {
+        for (var item in data) {
+          agenda.add({...Map<String, dynamic>.from(item), 'tipo_item': 'atividade', 'horario': item['hora_inicio'] ?? ''});
+        }
+      }
+    }
+
+    // Ordenar por data
+    agenda.sort((a, b) {
+      final dataA = (a['data'] ?? '').toString();
+      final dataB = (b['data'] ?? '').toString();
+      return dataA.compareTo(dataB);
+    });
+
+    return agenda;
+  }
+
+  // ==================== CHECK-OUT ====================
+
+  Future<void> realizarCheckOut(String eventoId) async {
+    final user = getCurrentUserFromCache();
+    if (user == null) throw Exception('Usuário não autenticado.');
+
+    // Verificar se já fez check-in
+    final checkinResp = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/checkins?user_id=eq.${user.id}&evento_id=eq.$eventoId&tipo_checkin=eq.entrada&select=id'),
+      headers: _serviceHeaders,
+    );
+
+    if (checkinResp.statusCode == 200) {
+      final data = jsonDecode(checkinResp.body);
+      if (data is List && data.isEmpty) {
+        throw Exception('Você precisa fazer check-in antes do check-out.');
+      }
+    }
+
+    // Registrar check-out
+    await _client.post(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/checkins'),
+      headers: _headers,
+      body: jsonEncode({
+        'user_id': user.id,
+        'evento_id': eventoId,
+        'tipo_checkin': 'saida',
+      }),
+    );
+  }
+
+  // ==================== PARTICIPAÇÃO EM ATIVIDADES ====================
+
+  Future<void> confirmarParticipacao(String atividadeId, String status) async {
+    final user = getCurrentUserFromCache();
+    if (user == null) throw Exception('Usuário não autenticado.');
+
+    // Verificar se já existe participação
+    final existing = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/participacoes_atividades?atividade_id=eq.$atividadeId&user_id=eq.${user.id}&select=id'),
+      headers: _serviceHeaders,
+    );
+
+    if (existing.statusCode == 200) {
+      final data = jsonDecode(existing.body);
+      if (data is List && data.isNotEmpty) {
+        // Atualizar
+        await _client.patch(
+          Uri.parse('${AppConfig.supabaseUrl}/rest/v1/participacoes_atividades?atividade_id=eq.$atividadeId&user_id=eq.${user.id}'),
+          headers: {..._serviceHeaders, 'Prefer': 'return=minimal'},
+          body: jsonEncode({'status': status, 'data_resposta': DateTime.now().toIso8601String()}),
+        );
+        return;
+      }
+    }
+
+    // Criar nova
+    await _client.post(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/participacoes_atividades'),
+      headers: _headers,
+      body: jsonEncode({
+        'atividade_id': atividadeId,
+        'user_id': user.id,
+        'status': status,
+      }),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getParticipacoes(String atividadeId) async {
+    final response = await _client.get(
+      Uri.parse('${AppConfig.supabaseUrl}/rest/v1/participacoes_atividades?atividade_id=eq.$atividadeId&select=*,profiles(nome,cargo)'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return data.cast<Map<String, dynamic>>();
+      }
+    }
+    return [];
+  }
+
   // ==================== HELPERS ====================
+
+  UserModel? getCurrentUserFromCache() {
+    final localStorage = LocalStorageService();
+    return localStorage.getUser();
+  }
 
   Future<String> _gerarCodigoUnico() async {
     final random = Random();

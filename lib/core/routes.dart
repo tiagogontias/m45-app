@@ -13,6 +13,8 @@ import '../screens/register_screen.dart';
 import '../screens/teams_screen.dart';
 import '../screens/atividades_screen.dart';
 import '../screens/materiais_screen.dart';
+import '../screens/solicitacoes_screen.dart';
+import '../screens/agenda_screen.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -29,6 +31,8 @@ class AppRoutes {
   static const String materiais = '/materiais';
   static const String teams = '/teams';
   static const String atividades = '/atividades';
+  static const String solicitacoes = '/solicitacoes';
+  static const String agenda = '/agenda';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -63,6 +67,10 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const TeamsScreen());
       case atividades:
         return MaterialPageRoute(builder: (_) => const AtividadesScreen());
+      case solicitacoes:
+        return MaterialPageRoute(builder: (_) => const SolicitacoesScreen());
+      case agenda:
+        return MaterialPageRoute(builder: (_) => const AgendaScreen());
       default:
         return MaterialPageRoute(builder: (_) => const LoginScreen());
     }
