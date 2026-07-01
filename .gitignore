@@ -51,3 +51,6 @@ app.*.map.json
 
 # Supabase local data
 supabase/.temp/
+
+# Hermes Agent workspace (plans, debug scripts com chaves secretas)
+.hermes/
